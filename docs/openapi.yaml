@@ -1,0 +1,343 @@
+openapi: 3.0.3
+info:
+  title: Task Tracker API
+  version: 1.0.0
+  description: API documentation for Task Tracker backend.
+servers:
+  - url: http://127.0.0.1:8000/api
+tags:
+  - name: Auth
+  - name: Dashboard
+  - name: Categories
+  - name: Projects
+  - name: Tasks
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Token
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: admin@example.com
+        password:
+          type: string
+          example: password123
+    User:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        name: { type: string, example: Admin }
+        email: { type: string, format: email, example: admin@example.com }
+        is_admin: { type: boolean, example: true }
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          example: 1|long-sanctum-token
+        user:
+          $ref: '#/components/schemas/User'
+    ProjectRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          example: Website E-Commerce
+        description:
+          type: string
+          nullable: true
+          example: Redesign platform belanja online
+        status:
+          type: string
+          enum: [active, archived]
+          example: active
+    Project:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        created_by: { type: integer, example: 1 }
+        name: { type: string, example: Website E-Commerce }
+        description: { type: string, nullable: true }
+        status: { type: string, example: active }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        tasks_count: { type: integer, example: 12 }
+    TaskRequest:
+      type: object
+      required: [project_id, category_id, title]
+      properties:
+        project_id: { type: integer, example: 1 }
+        category_id: { type: integer, example: 2 }
+        title: { type: string, maxLength: 255, example: Integrasi Payment Gateway }
+        description: { type: string, nullable: true }
+        due_date:
+          type: string
+          format: date
+          nullable: true
+          example: 2026-03-20
+    MoveTaskRequest:
+      type: object
+      required: [category_id]
+      properties:
+        category_id: { type: integer, example: 4 }
+    Category:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        name: { type: string, example: Todo }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    Task:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        project_id: { type: integer, example: 1 }
+        category_id: { type: integer, example: 1 }
+        created_by: { type: integer, example: 1 }
+        deleted_by: { type: integer, nullable: true, example: null }
+        title: { type: string, example: Integrasi Payment Gateway }
+        description: { type: string, nullable: true }
+        due_date: { type: string, format: date, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        deleted_at: { type: string, format: date-time, nullable: true }
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and get token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Unauthorized
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout current token
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+  /dashboard/summary:
+    get:
+      tags: [Dashboard]
+      summary: Dashboard summary
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+  /categories:
+    get:
+      tags: [Categories]
+      summary: List categories
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+  /projects:
+    get:
+      tags: [Projects]
+      summary: List projects (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [active, archived]
+      responses:
+        '200':
+          description: Success
+    post:
+      tags: [Projects]
+      summary: Create project
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+  /projects/{project}:
+    get:
+      tags: [Projects]
+      summary: Project detail + tasks grouped by category
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: project
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Success
+    put:
+      tags: [Projects]
+      summary: Update project
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: project
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectRequest'
+      responses:
+        '200':
+          description: Success
+    patch:
+      tags: [Projects]
+      summary: Partial update project
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: project
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectRequest'
+      responses:
+        '200':
+          description: Success
+  /tasks:
+    get:
+      tags: [Tasks]
+      summary: List tasks (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: project_id
+          schema: { type: integer }
+        - in: query
+          name: category_id
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Success
+    post:
+      tags: [Tasks]
+      summary: Create task
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+  /tasks/{task}:
+    put:
+      tags: [Tasks]
+      summary: Update task
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: task
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskRequest'
+      responses:
+        '200':
+          description: Success
+    delete:
+      tags: [Tasks]
+      summary: Soft delete task
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: task
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Success
+  /tasks/{task}/move:
+    patch:
+      tags: [Tasks]
+      summary: Move task to another category
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: task
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveTaskRequest'
+      responses:
+        '200':
+          description: Success
